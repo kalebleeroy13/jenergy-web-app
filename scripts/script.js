@@ -126,15 +126,26 @@ function enableLazyLoading() {
 
 // Fetch and insert header/footer content
 function fetchAndSetInnerHTML(url, element) {
+    const allowedUrls = ['header.html', 'footer.html'];
+    if (!allowedUrls.includes(url)) {
+        console.error('Blocked fetch for disallowed URL:', url);
+        return;
+    }
     fetch(url)
         .then(response => {
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
+            if (new URL(response.url, location.origin).origin !== location.origin) {
+                throw new Error('Response from untrusted origin blocked');
+            }
             return response.text();
         })
         .then(data => {
-            element.innerHTML = data;
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(data, 'text/html');
+            doc.querySelectorAll('script').forEach(s => s.remove());
+            element.innerHTML = doc.body.innerHTML;
             if (url.includes('header.html')) {
                 addDropdownListeners();
             }
